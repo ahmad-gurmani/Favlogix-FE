@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import { useChatStore } from "@/store/useChatStore";
 
 const menuItems: { name: string; link: string; icon: string }[] = [
   { name: "Inbox", link: "/chat", icon: "mdi:inbox" },
@@ -16,7 +15,7 @@ const menuItems: { name: string; link: string; icon: string }[] = [
 const ChatHeader: React.FC = () => {
   const [activeMenu, setActiveMenu] = useState("Inbox");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   return (
     <div className="px-4 py-2 rounded-lg bg-white text-black flex items-center justify-between">
       {/* Left */}
@@ -67,7 +66,7 @@ const ChatHeader: React.FC = () => {
         </div>
 
         {/* Mobile Hamburger to toggle Dropdown */}
-        <button 
+        <button
           className="md:hidden p-2 hover:bg-gray-100 rounded-lg ml-2 transition-colors"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
@@ -86,7 +85,7 @@ const ChatHeader: React.FC = () => {
                 <span className="text-[10px] text-gray-500">michael@example.com</span>
               </div>
             </div>
-            
+
             <ul className="flex flex-col py-1">
               {menuItems.map((item) => (
                 <li
@@ -102,7 +101,7 @@ const ChatHeader: React.FC = () => {
                 </li>
               ))}
             </ul>
-            
+
             <div className="border-t border-gray-100 pt-1 mt-1">
               <div className="px-4 py-2 flex items-center gap-2 text-[12px] text-gray-700 hover:bg-gray-50 cursor-pointer text-left">
                 <Icon icon="mdi:cog-outline" className="size-4" />

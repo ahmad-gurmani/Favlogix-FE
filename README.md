@@ -15,7 +15,7 @@ This project is a high-fidelity front-end implementation based on the provided F
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18.20.8+ or v20.19+ recommended)
+- Node.js (v20.19+)
 - pnpm (preferred) or npm
 
 ### Installation

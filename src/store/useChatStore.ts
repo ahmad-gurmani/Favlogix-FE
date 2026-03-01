@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import axios from "axios";
-import { io, Socket } from "socket.io-client";
+import { teams as localTeams, users as localUsers, channels as localChannels, rooms as localRooms, initialMessages } from "../services/mockData";
 
 export type Message = {
   id: number;
@@ -24,6 +24,8 @@ export type User = {
   status: "online" | "offline";
   email: string;
   phone: string;
+  company?: string;
+  address?: string;
 };
 
 export type Channel = {
@@ -41,11 +43,10 @@ export type Room = {
   lastMessageTime: string;
   unreadCount: number;
   agentId?: string;
-  otherUser?: User; // joined from backend
+  otherUser?: User;
 };
 
 interface ChatState {
-  socket: Socket | null;
   isChatOpen: boolean;
   isSidebarOpen: boolean;
   isDetailsCollapsed: boolean;
@@ -64,7 +65,6 @@ interface ChatState {
   isLoadingMessages: boolean;
 
   // Actions
-  initSocket: () => void;
   toggleChat: () => void;
   closeChat: () => void;
   toggleSidebar: () => void;
@@ -79,7 +79,6 @@ interface ChatState {
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  socket: null,
   isChatOpen: true,
   isSidebarOpen: true,
   isDetailsCollapsed: false,
@@ -95,47 +94,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   isLoading: false,
   isLoadingMessages: false,
-
-  initSocket: () => {
-    if (get().socket) return; // Already initialized
-
-    const socketUrl = "http://localhost:3001";
-    const newSocket = io(socketUrl);
-
-    newSocket.on("connect", () => {
-      // Socket connected
-    });
-
-    newSocket.on("receive_message", (message: Message) => {
-      // If the message belongs to the currently active room, append it to the chat
-      if (message.roomId === get().activeRoomId) {
-        set((state) => ({ messages: [...state.messages, message] }));
-      }
-      // Also update the room's last message info
-      set((state) => ({
-        rooms: state.rooms.map(r => r.id === message.roomId ? {
-          ...r,
-          lastMessageText: message.text.substring(0, 30) + (message.text.length > 30 ? '...' : ''),
-          lastMessageTime: message.time,
-          unreadCount: message.senderId !== "currUser" && message.roomId !== get().activeRoomId ? r.unreadCount + 1 : r.unreadCount
-        } : r)
-      }));
-    });
-
-    newSocket.on("user_typing", (data: { roomId: string, isTyping: boolean, user: string }) => {
-      set((state) => {
-        const newTyping = { ...state.typingUsers };
-        if (data.isTyping) {
-          newTyping[data.roomId] = data.user;
-        } else {
-          delete newTyping[data.roomId];
-        }
-        return { typingUsers: newTyping };
-      });
-    });
-
-    set({ socket: newSocket });
-  },
 
   toggleChat: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
 
@@ -157,9 +115,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Fetch historical messages for this room
     get().fetchMessages(roomId);
-
-    // Tell socket we officially joined this view (optional based on backend logic)
-    get().socket?.emit("join_room", roomId);
   },
 
   setSelectedUser: (userId) => {
@@ -178,70 +133,124 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoading: true });
     // Add artificial delay to show skeletons
     await new Promise(resolve => setTimeout(resolve, 2000));
-    get().initSocket(); // Ensure socket is ready
     try {
-      const [teamsRes, usersRes, channelsRes, roomsRes] = await Promise.all([
-        axios.get("http://localhost:3001/api/teams"),
-        axios.get("https://dummyjson.com/users?limit=5"), // Integration of LIVE Public API as per mandatory requirement
-        axios.get("http://localhost:3001/api/channels"),
-        axios.get("http://localhost:3001/api/rooms")
-      ]);
+      // 1. Fetch Users from DummyJSON (Mandatory Public API)
+      const usersRes = await axios.get("https://dummyjson.com/users?limit=10");
+
+      // 2. Fetch "Teams/Posts" from JSONPlaceholder to simulate dynamic list
+      const teamsRes = await axios.get("https://jsonplaceholder.typicode.com/posts?_limit=2");
 
       // Map public API users to our internal User format
-      const mappedUsers: User[] = usersRes.data.users.map((u: any, index: number) => ({
-        id: `u${index + 1}`,
+      const mappedPublicUsers: User[] = usersRes.data.users.map((u: any, index: number) => ({
+        id: `u${u.id}`,
         name: `${u.firstName} ${u.lastName}`,
         teamId: index % 2 === 0 ? "team1" : "team2",
-        status: index % 2 === 0 ? "online" : "offline",
+        status: index % 3 === 0 ? "online" : "offline",
         email: u.email,
-        phone: u.phone
+        phone: u.phone,
+        company: u.company?.name || "Favlogix",
+        address: `${u.address?.address}, ${u.address?.city}`
       }));
 
+      // Map posts to Teams
+      const mappedTeams: Team[] = teamsRes.data.map((p: any, index: number) => ({
+        id: `team${index + 1}`,
+        name: p.title.split(' ')[0], // Use first word of title
+        channelCount: Math.floor(Math.random() * 20) + 5
+      }));
+
+      // Combine with local mock logic for rooms
+      const richerRooms = localRooms.map((room, index) => {
+        const otherUser = mappedPublicUsers[index % mappedPublicUsers.length];
+        return { ...room, otherUser } as Room;
+      });
+
       set({
-        teams: teamsRes.data,
-        users: mappedUsers,
-        channels: channelsRes.data,
-        rooms: roomsRes.data,
+        teams: mappedTeams,
+        users: mappedPublicUsers,
+        channels: localChannels,
+        rooms: richerRooms,
         isLoading: false
       });
 
-      // Select first room automatically if none selected
-      if (!get().activeRoomId && roomsRes.data.length > 0) {
-        get().setActiveRoom(roomsRes.data[0].id);
+      // Select first room automatically
+      if (!get().activeRoomId && richerRooms.length > 0) {
+        get().setActiveRoom(richerRooms[0].id);
       }
     } catch (error) {
-      // Failed to fetch initial data
-      set({ isLoading: false });
+      // Fallback
+      set({
+        teams: localTeams,
+        users: localUsers as User[],
+        channels: localChannels,
+        rooms: localRooms as unknown as Room[],
+        isLoading: false
+      });
     }
   },
 
   fetchMessages: async (roomId) => {
     set({ isLoadingMessages: true });
-    // Add artificial delay to show skeletons
     await new Promise(resolve => setTimeout(resolve, 1500));
+
     try {
-      const response = await axios.get(`http://localhost:3001/api/messages/${roomId}`);
-      set({ messages: response.data, isLoadingMessages: false });
+      // 3. Fetch Messages (Comments) from JSONPlaceholder for selected room
+      const postId = roomId.replace(/\D/g, '') || '1';
+      const commentsRes = await axios.get(`https://jsonplaceholder.typicode.com/comments?postId=${postId}`);
+
+      const mappedMessages: Message[] = commentsRes.data.slice(0, 5).map((c: any) => ({
+        id: c.id,
+        roomId,
+        senderId: Math.random() > 0.5 ? "currUser" : "c1",
+        text: c.body,
+        time: "10:00 AM",
+        read: true
+      }));
+
+      set({ messages: mappedMessages, isLoadingMessages: false });
     } catch (error) {
-      // Failed to fetch messages
-      set({ isLoadingMessages: false });
+      set({ messages: initialMessages[roomId] || [], isLoadingMessages: false });
     }
   },
 
   sendMessage: (text) => {
-    const { socket, activeRoomId } = get();
-    if (!socket || !activeRoomId) return;
+    const { activeRoomId } = get();
+    if (!activeRoomId) return;
 
-    socket.emit("send_message", {
+    const newMessage: Message = {
+      id: Date.now(),
       roomId: activeRoomId,
+      senderId: "currUser",
       text,
-      senderId: "currUser"
-    });
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      read: true
+    };
+
+    set((state) => ({ messages: [...state.messages, newMessage] }));
+
+    // Simulate auto-responder
+    setTimeout(() => {
+      const replyMessage: Message = {
+        id: Date.now() + 1,
+        roomId: activeRoomId,
+        senderId: "c1",
+        text: `I received your message: "${text}"`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        read: false
+      };
+      set((state) => ({ messages: [...state.messages, replyMessage] }));
+    }, 1500);
   },
 
   setTyping: (roomId, isTyping) => {
-    const { socket } = get();
-    if (!socket) return;
-    socket.emit("typing", { roomId, isTyping, user: "You" });
+    if (isTyping) {
+      set((state) => ({ typingUsers: { ...state.typingUsers, [roomId]: "You" } }));
+    } else {
+      set((state) => {
+        const newTyping = { ...state.typingUsers };
+        delete newTyping[roomId];
+        return { typingUsers: newTyping };
+      });
+    }
   }
 }));

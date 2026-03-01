@@ -1,7 +1,7 @@
 # Favlogix-FE-Assessment
 
 ## Task Overview
-This project is a high-fidelity front-end implementation based on the provided Figma design. It demonstrates advanced UI/UX patterns, including complex loading sequences, responsive layouts, and seamless state transitions.
+This project is a high-fidelity front-end implementation based on the provided Figma design. It is a standalone React application that demonstrates advanced UI/UX patterns, including complex loading sequences, responsive layouts, and seamless state transitions without any backend dependencies.
 
 ### Core Objectives Delivered:
 - **UI Implementation Accuracy**: 1:1 fidelity with Figma spacing, colors (#0C0C0C), and typography.
@@ -21,7 +21,7 @@ This project is a high-fidelity front-end implementation based on the provided F
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ahmad-gurmani/Favlogix-FE.git
    cd Favlogix-FE-Assessment
    ```
 
@@ -40,28 +40,32 @@ This project is a high-fidelity front-end implementation based on the provided F
 ## 🛠️ Tech Stack
 - **Framework**: React (Vite)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS (Vanilla CSS for custom animations)
+- **Styling**: Tailwind CSS
 - **State Management**: Zustand
-- **Icons**: Custom SVG assets from Figma
-- **Animations**: CSS Keyframes + Framer Motion (where applicable)
+- **API Integration**: Axios + Multi-source Public APIs
 
 ---
 
 ## 🧩 Key Features & Implementation
 - **Splash Screen**: Three-phase loading sequence (`loading` -> `migrating` -> `populating`).
-- **Dashboard**: Multi-column layout with conditional sidebar collapses.
-- **Data Fetching**: Artificial delays implemented to demonstrate high-fidelity skeleton loading states.
-- **Immersive UI**: Glowing background effects with subtle rotation and overflow for atmospheric depth.
-
-## 🔗 APIs Used
-- **DummyJSON** (`https://dummyjson.com/users`): Integrated for live user data fetching.
-- **Local Backend** (`http://localhost:3001`): Used for relational chat data, rooms, and real-time Socket.io communication.
-
-## 📄 Assumptions
-- The "Inbox" section was prioritized for the migration animation as highlighted in the requirements.
-- The 5px margin and #0C0C0C background color were applied strictly to match the specific UI refinement requests.
-- Skeletal states remain visible for ~2 seconds to ensure visibility of the loading experience.
+- **Dashboard**: Multi-column layout with conditional sidebar collapses and immersive animations.
+- **Frontend-Only Architecture**: All relational data is managed via local mock services (`src/services/mockData.ts`), simulating real API responses with artificial latency for skeleton state transitions.
+- **Deep API Integration (Mandatory)**:
+  - **Users & Profiles**: Fetched from `https://dummyjson.com/users` (includes rich data like company/address for the details panel).
+  - **Teams & Organizational Data**: Fetched from `https://jsonplaceholder.typicode.com/posts` to simulate dynamic structures.
+  - **Conversation History**: Historical messages are pulled from `https://jsonplaceholder.typicode.com/comments` for each room.
 
 ---
 
-**Developed by Antigravity AI for Favlogix Assessment.**
+## 🌐 Deployment Guide (Vercel)
+
+This project is optimized for a simple, one-click deployment to **Vercel**.
+
+1. Connect your GitHub repository to Vercel.
+2. Ensure the **Framework Preset** is set to **Vite**.
+3. No environment variables are required for basic functionality (all public APIs are handled client-side).
+4. Deploy!
+
+---
+
+**Developed by Ahmad Gurmani for Favlogix Assessment.**
